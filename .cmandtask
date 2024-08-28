@@ -1,0 +1,32 @@
+#version 2
+#desc testfile contents
+#bannerbegin
+BANNER!!!!
+#bannerend
+#helpbegin
+taskA - Entry of tasks
+
+You can run taskA directlly.
+#helpend
+
+:taskApre
+@echo off
+echo taskApre
+
+:taskApost
+@echo off
+echo taskApost
+
+:taskA
+#name Task A!
+#desc A simple task!
+#helpbegin
+Entry of the tasks
+#helpend
+#pre taskApre
+#post taskApost
+#acceptparams true
+#runmode default
+#if-file-exists .cmandtask
+@echo off
+echo taskA
