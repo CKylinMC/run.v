@@ -8,7 +8,7 @@ This tool used to be a part of cmand (aka. `cmand task [taskname]`), and now ful
 ## Installation
 
 1. Download binary from release page.
-2. Put any where in your system PATH variable.
+2. Put any folder that in your system PATH variable.
 3. Done.
 
 ## Usage
@@ -16,7 +16,7 @@ This tool used to be a part of cmand (aka. `cmand task [taskname]`), and now ful
 `run` does not have any configuration file or subcommands, just a few flags.
 
 * `-c/--create` Create/override a new task file.
-* `-?/--usage` Check usages for a task if it have.
+* `-?/--usage` Check help messages for a task if it have.
 * `-a/--run-all` Run multiple tasks in one time.
 
 And due to it's built on top of the cli.v module, it also have:
@@ -34,14 +34,14 @@ run [flags] [taskname]
 such as:
 
 * `run -c` Create a new task file.
-* `run -? sometask` Check usages for a task.
+* `run -? sometask` Check help messages for a task.
 * `run -a task1 task2 task3` Run multiple tasks in one time.
 
 ### `.cmandtask` file
 
 When you use `run -c` or `run --create`, it will create a special file in current folder named `.cmandtask`, it's a task file that could be parsed by `run`.
 
-`.cmandtask` file have two parts: zone `meta` and zone `tasks`.
+`.cmandtask` file have two parts: `meta` zone and `tasks` zone.
 
 #### Basic syntax
 
@@ -53,7 +53,7 @@ All lines that starts with `//` and not in lone-line marks will be treated as co
 
 All remaining lines will be content of its section.
 
-#### Zone `meta`
+#### `meta` Zone
 
 On the top of the taskfile, it will define some special flags:
 
@@ -75,9 +75,9 @@ All supported properties for meta:
 * `#banner` or pair of `#bannerbegin` and `#bannerend` The banner text that will be shown when you run any command inside a taskfile.
 * `help` or pair of `#helpbegin` and `#helpend` The help message overrides for your taskfile.
 
-#### Zone `tasks`
+#### `tasks` Zone
 
-After the `meta` zone, you could define your tasks in the zone `tasks`:
+After the zone `meta`, you could define your tasks in the `tasks` zone:
 
 ```
 :taskApre
