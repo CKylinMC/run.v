@@ -509,12 +509,16 @@ fn execute_as_tempfile(task Task) !int {
 		}
 		else { task.ext }
 	}
+	mut launcher := match task.launcher {
+		"" { if os.user_os() == "windows" { "internal:cmd" } else { "internal:sh" } }
+		else { task.launcher }
+	}
 	mut filename := ".cmandtask_temp_"+rand.string(10)+ext
 	os.write_file(filename, task.cmd) or {
 		// eprintln("Failed to create tempfile")
 		failed("Failed to create tempfile")
 	}
-	mut realcmd := match task.launcher {
+	mut realcmd := match launcher {
 		"internal:cmd" {
 			filename
 		}
