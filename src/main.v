@@ -12,6 +12,12 @@ mut:
 	value	 string
 }
 
+pub struct EnvVar {
+mut:
+	name  string
+	value string
+}
+
 pub struct Task {
 mut:
 	name         string
@@ -23,6 +29,9 @@ mut:
 	runmode      string
 	cmd          string
 	conditions   []TaskCondition
+	launcher	 string
+	ext    		 string
+	envs		 []EnvVar
 }
 
 pub struct TaskManifest {
@@ -82,6 +91,12 @@ fn parse_task_manifest(content string) TaskManifest {
 		runmode:      "default",
 		cmd:          "",
 		conditions:   []TaskCondition{},
+		launcher:     match os.user_os() {
+					  	  "windows" { "internal:cmd" }
+					      else { "internal:sh" }
+					  },
+		ext:          "internal:auto",
+		envs:         []EnvVar{},
 	}
 	mut lines := content.split_into_lines()
 	for line in lines {
@@ -181,6 +196,8 @@ fn parse_task_manifest(content string) TaskManifest {
 						"pre"          { current_task.pre = prop.value }
 						"post"         { current_task.post = prop.value }
 						"acceptparams" { current_task.acceptparams = prop.value == "true" }
+						"launcher"     { current_task.launcher = prop.value }
+						"ext"          { current_task.ext = prop.value }
 						"runmode"      {
 							current_task.runmode = match prop.value {
 								"default" { "default" }
@@ -203,7 +220,13 @@ fn parse_task_manifest(content string) TaskManifest {
 						// "prebegin"     { mode = "pre" }
 						// "postbegin"    { mode = "post" }
 						"cmdbegin"     { mode = "cmd" }
-						else { failed("[sect] Invalid property: "+prop.key) }
+						else {
+							if prop.key.starts_with("env:") {
+								current_task.envs << [EnvVar{name: prop.key.trim_left("env:"), value: prop.value}]
+							} else {
+								failed("[sect] Invalid property: "+prop.key)
+							}
+						}
 					}
 				}
 			}
@@ -365,10 +388,10 @@ fn execute_task(task Task, manifest TaskManifest) ! {
 	println(term.gray("Executing task: "+task.name))
 	match task.runmode {
 		"default", "shell", "" {
-			execute_as_shell(task.cmd) or { failed_with_time(task.name, start_time) panic("Aborted") }
+			execute_as_shell(task) or { failed_with_time(task.name, start_time) panic("Aborted") }
 		}
 		"tempfile" {
-			execute_as_tempfile(task.cmd) or { failed_with_time(task.name, start_time) panic("Aborted") }
+			execute_as_tempfile(task) or { failed_with_time(task.name, start_time) panic("Aborted") }
 		}
 		else {
 			failed_with_time("Unsupported runmode: "+task.runmode, start_time) panic("Aborted")
@@ -386,9 +409,49 @@ fn execute_task(task Task, manifest TaskManifest) ! {
 	println(term.green("Task "+task.name+" finished in "+(time.now()-start_time).str()))
 }
 
-fn execute_as_shell(cmd string) !int {
+fn get_envs_string(envs []EnvVar) string {
+	match os.user_os() {
+		"windows" {
+			mut envs_str := ""
+			for env in envs {
+				envs_str += "set "+env.name+"="+env.value+" & "
+			}
+			return envs_str
+		}
+		else {
+			mut envs_str := ""
+			for env in envs {
+				envs_str += env.name+"="+env.value+" "
+			}
+			return envs_str
+		}
+	}
+}
+
+fn execute_as_shell(task Task) !int {
 	println(term.gray("mode: shell"))
-	mut result := os.system(cmd)
+	mut realcmd := match task.launcher {
+		"internal:cmd" {
+			task.cmd
+		}
+		"internal:powershell" {
+			r"powershell -executionpolicy bypass -Command "+task.cmd
+		}
+		"internal:pwsh" {
+			r"pwsh -Command "+task.cmd
+		}
+		"internal:sh" {
+			"sh -c "+task.cmd
+		}
+		else {
+			if task.launcher.contains(r"$cmd") {
+				task.launcher.replace(r"$cmd", task.cmd)
+			} else {
+				task.launcher+" "+task.cmd
+			}
+		}
+	}
+	mut result := os.system(get_envs_string(task.envs)+realcmd)
 	if result != 0 {
 		eprintln("Task exited with code: "+result.str())
 		panic("Exit with code: "+result.str())
@@ -397,14 +460,47 @@ fn execute_as_shell(cmd string) !int {
 	return result
 }
 
-fn execute_as_tempfile(cmd string) !int {
+fn execute_as_tempfile(task Task) !int {
 	println(term.gray("mode: tempfile"))
-	mut filename := ".cmandtask_temp_"+rand.string(10)+".cmd"
-	os.write_file(filename, cmd) or {
+	mut ext := match task.ext {
+		"internal:auto" {
+			match task.launcher {
+				"internal:cmd" { ".bat" }
+				"internal:powershell" { ".ps1" }
+				"internal:pwsh" { ".ps1" }
+				"internal:sh" { ".sh" }
+				else { "" }
+			}
+		}
+		else { task.ext }
+	}
+	mut filename := ".cmandtask_temp_"+rand.string(10)+ext
+	os.write_file(filename, task.cmd) or {
 		eprintln("Failed to create tempfile")
 		panic("Failed to create tempfile")
-	 }
-	mut result := os.system(filename)
+	}
+	mut realcmd := match task.launcher {
+		"internal:cmd" {
+			filename
+		}
+		"internal:powershell" {
+			r"powershell -executionpolicy bypass -File .\"+filename
+		}
+		"internal:pwsh" {
+			r"pwsh -File .\"+filename
+		}
+		"internal:sh" {
+			"sh "+filename
+		}
+		else {
+			if task.launcher.contains(r"$cmd") {
+				task.launcher.replace(r"$cmd", filename)
+			} else {
+				task.launcher+" "+filename
+			}
+		}
+	}
+	mut result := os.system(get_envs_string(task.envs)+realcmd)
 	os.rm(filename) or {
 		eprintln("Failed to remove tempfile")
 		panic("Failed to remove tempfile")
