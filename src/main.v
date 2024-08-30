@@ -216,6 +216,8 @@ fn parse_task_manifest(content string) TaskManifest {
 						"if-env-not-equals" {current_task.conditions << [TaskCondition{condition: "env-not-equals", value: prop.value}]}
 						"if-folder-exists" {current_task.conditions << [TaskCondition{condition: "folder-exists", value: prop.value}]}
 						"if-folder-not-exists" {current_task.conditions << [TaskCondition{condition: "folder-not-exists", value: prop.value}]}
+						"if-os-is" {current_task.conditions << [TaskCondition{condition: "os-is", value: prop.value}]}
+						"if-os-not-is" {current_task.conditions << [TaskCondition{condition: "os-not-is", value: prop.value}]}
 						"helpbegin"    { mode = "help" }
 						// "prebegin"     { mode = "pre" }
 						// "postbegin"    { mode = "post" }
@@ -581,6 +583,12 @@ fn evaluate_condition(condition TaskCondition, task Task) bool {
 		}
 		"folder-not-exists" {
 			return !os.exists(condition.value) || !os.is_dir(condition.value)
+		}
+		"os-is" {
+			return os.user_os() == condition.value
+		}
+		"os-not-is" {
+			return os.user_os() != condition.value
 		}
 		else {
 			failed("Unsupported condition: "+condition.condition)
