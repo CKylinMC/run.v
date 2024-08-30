@@ -472,6 +472,12 @@ fn execute_as_shell(task Task) !int {
 		"internal:sh" {
 			"sh -c "+cmd
 		}
+		"" {
+			match os.user_os() {
+				"windows" { cmd }
+				else { "sh -c "+cmd }
+			}
+		}
 		else {
 			if task.launcher.contains(r"$cmd") {
 				task.launcher.replace(r"$cmd", cmd)
@@ -483,7 +489,7 @@ fn execute_as_shell(task Task) !int {
 	mut result := os.system(get_envs_string(task.envs)+realcmd)
 	if result != 0 {
 		eprintln("Task exited with code: "+result.str())
-		panic("Exit with code: "+result.str())
+		failed("Exit with code: "+result.str())
 	}
 	println(term.gray("Task exited with code: "+result.str()))
 	return result
@@ -492,12 +498,12 @@ fn execute_as_shell(task Task) !int {
 fn execute_as_tempfile(task Task) !int {
 	println(term.gray("mode: tempfile"))
 	mut ext := match task.ext {
-		"internal:auto" {
+		"", "internal:auto" {
 			match task.launcher {
-				"internal:cmd" { ".bat" }
-				"internal:powershell" { ".ps1" }
-				"internal:pwsh" { ".ps1" }
+				"internal:cmd" { ".cmd" }
+				"internal:powershell" ,"internal:pwsh" { ".ps1" }
 				"internal:sh" { ".sh" }
+				"" { if os.user_os() == "windows" { ".cmd" } else { "" } }
 				else { "" }
 			}
 		}
@@ -506,7 +512,13 @@ fn execute_as_tempfile(task Task) !int {
 	mut filename := ".cmandtask_temp_"+rand.string(10)+ext
 	os.write_file(filename, task.cmd) or {
 		eprintln("Failed to create tempfile")
-		panic("Failed to create tempfile")
+		failed("Failed to create tempfile")
+	}
+	defer {
+		os.rm(filename) or {
+			eprintln("Failed to remove tempfile")
+			failed("Failed to remove tempfile")
+		}
 	}
 	mut realcmd := match task.launcher {
 		"internal:cmd" {
@@ -529,14 +541,15 @@ fn execute_as_tempfile(task Task) !int {
 			}
 		}
 	}
+	os.signal_opt(os.Signal.int, fn[filename](sig os.Signal) {
+		eprintln("Task interrupted")
+		os.rm(filename) or { eprintln("Failed to clean up.") }
+		exit(1)
+	}) or { eprintln("Failed to set signal handler") }
 	mut result := os.system(get_envs_string(task.envs)+realcmd)
-	os.rm(filename) or {
-		eprintln("Failed to remove tempfile")
-		panic("Failed to remove tempfile")
-	}
 	if result != 0 {
 		eprintln("Task exited with code: "+result.str())
-		panic("Exit with code: "+result.str())
+		failed("Exit with code: "+result.str())
 	}
 	println(term.gray("Task exited with code: "+result.str()))
 	return result
