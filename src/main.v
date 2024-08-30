@@ -455,7 +455,7 @@ fn get_envs_string(envs []EnvVar) string {
 
 fn execute_as_shell(task Task) !int {
 	println(term.gray("mode: shell"))
-	mut cmd := task.cmd.replace("\n", match os.user_os() {
+	mut cmd := task.cmd.trim_space_right().replace("\n\n","\n").replace("\n", match os.user_os() {
 		"windows" { " && " }
 		else { " ; " }
 	})
