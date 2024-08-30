@@ -41,6 +41,7 @@ mut:
 	banner  string
 	help    string
 	tasks   map[string]Task
+	autorun string
 }
 
 pub struct Property {
@@ -80,6 +81,7 @@ fn parse_task_manifest(content string) TaskManifest {
 		banner:  "",
 		help:    "",
 		tasks:   map[string]Task{},
+		autorun: ""
 	}
 	mut current_task := Task{
 		name:         "",
@@ -137,6 +139,7 @@ fn parse_task_manifest(content string) TaskManifest {
 						"desc"    { manifest.desc = prop.value }
 						"banner"  { manifest.banner = prop.value }
 						"help"    { manifest.help = prop.value }
+						"autorun" { manifest.autorun = prop.value.trim_space() }
 						"bannerbegin" { mode = "banner" }
 						"helpbegin" { mode = "help" }
 						else { failed("[meta] Invalid property: "+prop.key) }
@@ -352,7 +355,16 @@ fn parse_args(cmd cli.Command) ! {
 		return
 	}
 
-	if "default" in manifest.tasks.keys() {
+	if manifest.autorun.len > 0 {
+		println("Running auto-run task")
+		if manifest.autorun in manifest.tasks.keys() {
+			mut task := manifest.tasks[manifest.autorun]
+			execute_task(task, manifest) or { failed("Failed to run auto-run task: "+manifest.autorun) }
+		} else {
+			println("Auto-run task not found: "+manifest.autorun)
+		}
+		return
+	} else if "default" in manifest.tasks.keys() {
 		println("Running default task")
 		mut task := manifest.tasks["default"]
 		execute_task(task, manifest) or { failed("Failed to run default task") }
