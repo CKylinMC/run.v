@@ -1,7 +1,7 @@
 Module {
 	name: 'run'
 	description: 'A simple task runner for windows'
-	version: '0.1.1'
+	version: '0.2.0'
 	license: 'MIT'
 	dependencies: []
 }

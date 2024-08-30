@@ -687,7 +687,7 @@ fn main() {
 	mut app := cli.Command{
 		name: "run"
 		description: "This is 'run' (aka. cmand task runner).\nA simple task runner written in V by CKylinMC, inspired by Makefile."
-		version: "0.1.1"
+		version: "0.2.0"
 		execute: parse_args
 		flags: [
 			cli.Flag{
