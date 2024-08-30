@@ -8,7 +8,7 @@ This tool used to be a part of cmand (aka. `cmand task [taskname]`), and now ful
 ## Installation
 
 1. Download binary from release page.
-2. Put any folder that in your system PATH variable.
+2. Put any folder which in your system PATH variable.
 3. Done.
 
 ## Usage
