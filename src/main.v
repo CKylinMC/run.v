@@ -350,6 +350,17 @@ fn parse_args(cmd cli.Command) ! {
 		return
 	}
 
+	if "default" in manifest.tasks.keys() {
+		println("Running default task")
+		mut task := manifest.tasks["default"]
+		execute_task(task, manifest) or { failed("Failed to run default task") }
+		return
+	}
+
+	if manifest.desc.len>0 {
+		println(manifest.desc)
+	}
+
 	// list all tasks and desc here
 	if manifest.tasks.len == 0 {
 		println("No tasks found")
