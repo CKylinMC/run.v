@@ -455,24 +455,28 @@ fn get_envs_string(envs []EnvVar) string {
 
 fn execute_as_shell(task Task) !int {
 	println(term.gray("mode: shell"))
+	mut cmd := task.cmd.replace("\n", match os.user_os() {
+		"windows" { " && " }
+		else { " ; " }
+	})
 	mut realcmd := match task.launcher {
 		"internal:cmd" {
-			task.cmd
+			cmd
 		}
 		"internal:powershell" {
-			r"powershell -executionpolicy bypass -Command "+task.cmd
+			r"powershell -executionpolicy bypass -Command "+cmd
 		}
 		"internal:pwsh" {
-			r"pwsh -Command "+task.cmd
+			r"pwsh -Command "+cmd
 		}
 		"internal:sh" {
-			"sh -c "+task.cmd
+			"sh -c "+cmd
 		}
 		else {
 			if task.launcher.contains(r"$cmd") {
-				task.launcher.replace(r"$cmd", task.cmd)
+				task.launcher.replace(r"$cmd", cmd)
 			} else {
-				task.launcher+" "+task.cmd
+				task.launcher+" "+cmd
 			}
 		}
 	}
