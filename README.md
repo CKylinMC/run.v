@@ -74,6 +74,8 @@ All supported properties for meta:
 * `#desc` The description of the task file.
 * `#banner` or pair of `#bannerbegin` and `#bannerend` The banner text that will be shown when you run any command inside a taskfile.
 * `help` or pair of `#helpbegin` and `#helpend` The help message overrides for your taskfile.
+* `autorun` The task name that will be executed when you run the taskfile without any task name. `New in v0.1.1`
+  * Or, if you have any task named as `default`, it also works when you not using `autorun`.
 
 #### `tasks` Zone
 
@@ -113,6 +115,17 @@ All supported properties for task:
 * `pre` Pre-task name, will be executed before current task
 * `post` Post-task name, will be executed after current task
 * `runmode` Run mode, accept `shell`(default) or `tempfile`(create a temp file and run in current folder)
+* `launcher` Specify how to run this task, default by using platform-specify shell, you can define custom executable or command here. `New in v0.1.1`
+  * Use `$cmd` to represent the command or the tempfile to be executed, or it will be appended to the end of the command.
+* `ext` Specify the file extension of the tempfile, default is `.cmd` for Windows and `.sh` for other platforms. Only works when `runmode` is `tempfile`. `New in v0.1.1`
+* `env` Specify the environment variables for this task. `New in v0.1.1`
+  * This property could be defined multiple times.
+  * This property using special syntax: `env:KEY VALUE`.
+  * It will cast to platform-specific env-setting command added before the command.
+    * Windows:
+      * `set KEY=VALUE & set KEY=VALUE & ... & $cmd`
+    * Other:
+      * `KEY=VALUE KEY=VALUE ... $cmd`
 
 Sometimes you want your task only executed when some conditions are met, you could use `if-*` properties to define them:
 
@@ -126,6 +139,9 @@ Sometimes you want your task only executed when some conditions are met, you cou
 * `if-env-not-equals [variable=value]` Task will only be executed when the value of the environment variable with the specified name is not equal to the specified value.
 * `if-folder-exists [path]` Task will only be executed when the folder at the specified path exists.
 * `if-folder-not-exists [path]` Task will only be executed when the folder at the specified path does not exist.
+* `if-os-is` Task will only be executed when the operating system is the specified value. Supported values are `windows`, `linux`, `macos` or other. `New in v0.1.1`
+  * Check out [user_os possible values in vlang official repo](https://github.com/vlang/v/blob/01fd719116f84ae22ee570188df6a26464b8268f/vlib/os/os.v#L406-L457).
+* `if-os-not-is` Task will only be executed when the operating system is not the specified value. Values are the same as `if-os-is`. `New in v0.1.1`
 
 Then any text not in the properties will be treated as the command to be executed. You can also quote your command in `#cmdbegin` and `#cmdend`, it also works.
 
