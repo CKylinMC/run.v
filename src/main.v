@@ -488,7 +488,7 @@ fn execute_as_shell(task Task) !int {
 	}
 	mut result := os.system(get_envs_string(task.envs)+realcmd)
 	if result != 0 {
-		eprintln("Task exited with code: "+result.str())
+		// eprintln("Task exited with code: "+result.str())
 		failed("Exit with code: "+result.str())
 	}
 	println(term.gray("Task exited with code: "+result.str()))
@@ -511,12 +511,12 @@ fn execute_as_tempfile(task Task) !int {
 	}
 	mut filename := ".cmandtask_temp_"+rand.string(10)+ext
 	os.write_file(filename, task.cmd) or {
-		eprintln("Failed to create tempfile")
+		// eprintln("Failed to create tempfile")
 		failed("Failed to create tempfile")
 	}
 	defer {
 		os.rm(filename) or {
-			eprintln("Failed to remove tempfile")
+			// eprintln("Failed to remove tempfile")
 			failed("Failed to remove tempfile")
 		}
 	}
@@ -541,18 +541,40 @@ fn execute_as_tempfile(task Task) !int {
 			}
 		}
 	}
-	os.signal_opt(os.Signal.int, fn[filename](sig os.Signal) {
+	println("cmd: "+realcmd)
+	cmd_parts := realcmd.trim_space().split(" ")
+	executable := find_path(cmd_parts.first()) or { failed("Failed to find executable for: "+cmd_parts.first()) "" }
+	mut proc := os.new_process(executable)
+	proc.set_args(cmd_parts[1..cmd_parts.len])
+	proc.set_environment(merge_into_current_env(task.envs))
+	mut kill_counts := 0
+	os.signal_opt(os.Signal.int, fn[filename, mut proc, mut kill_counts](sig os.Signal) {
 		eprintln("Task interrupted")
+		kill_counts+=1
+		if kill_counts > 1 {
+			proc.signal_kill()
+		}else {
+			proc.signal_term()
+		}
 		os.rm(filename) or { eprintln("Failed to clean up.") }
-		exit(1)
+		os.flush()
 	}) or { eprintln("Failed to set signal handler") }
-	mut result := os.system(get_envs_string(task.envs)+realcmd)
+	proc.wait()
+	result := proc.code
 	if result != 0 {
-		eprintln("Task exited with code: "+result.str())
+		// eprintln("Task exited with code: "+result.str())
 		failed("Exit with code: "+result.str())
 	}
 	println(term.gray("Task exited with code: "+result.str()))
 	return result
+}
+
+fn merge_into_current_env(env [] EnvVar) map[string]string {
+	mut current_env := os.environ()
+	for e in env {
+		current_env[e.name] = e.value
+	}
+	return current_env
 }
 
 fn evaluate_conditions(task Task) bool {
@@ -624,6 +646,18 @@ fn evaluate_condition(condition TaskCondition, task Task) bool {
 		}
 	}
 	return false
+}
+
+fn find_path(name string) ?string {
+	finder := match os.user_os() {
+		"windows" { "where " }
+		else { "which " }
+	}
+	result := os.execute(finder+name)
+	if result.exit_code != 0 {
+		return none
+	}
+	return result.output.split_into_lines()[0]
 }
 
 fn main() {
