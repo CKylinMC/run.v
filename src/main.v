@@ -514,12 +514,6 @@ fn execute_as_tempfile(task Task) !int {
 		// eprintln("Failed to create tempfile")
 		failed("Failed to create tempfile")
 	}
-	defer {
-		os.rm(filename) or {
-			// eprintln("Failed to remove tempfile")
-			failed("Failed to remove tempfile")
-		}
-	}
 	mut realcmd := match task.launcher {
 		"internal:cmd" {
 			filename
@@ -560,6 +554,10 @@ fn execute_as_tempfile(task Task) !int {
 	}) or { eprintln("Failed to set signal handler") }
 	proc.wait()
 	result := proc.code
+	os.rm(filename) or {
+		// eprintln("Failed to remove tempfile")
+		failed("Failed to remove tempfile")
+	}
 	if result != 0 {
 		// eprintln("Task exited with code: "+result.str())
 		failed("Exit with code: "+result.str())
