@@ -470,12 +470,12 @@ fn execute_as_shell(task Task) !int {
 			r"pwsh -Command "+cmd
 		}
 		"internal:sh" {
-			"sh -c "+cmd
+			'sh -c "'+cmd.replace('"',r'\"')+'"'
 		}
 		"" {
 			match os.user_os() {
 				"windows" { cmd }
-				else { "sh -c "+cmd }
+				else { 'sh -c "'+cmd.replace('"',r'\"')+'"' }
 			}
 		}
 		else {
