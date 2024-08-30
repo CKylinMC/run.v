@@ -541,7 +541,6 @@ fn execute_as_tempfile(task Task) !int {
 			}
 		}
 	}
-	println("cmd: "+realcmd)
 	cmd_parts := realcmd.trim_space().split(" ")
 	executable := find_path(cmd_parts.first()) or { failed("Failed to find executable for: "+cmd_parts.first()) "" }
 	mut proc := os.new_process(executable)
